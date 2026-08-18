@@ -8,6 +8,7 @@ import numpy as np
 from PIL import Image
 
 from wardrobe_seg.data import FashionpediaDataset, decode_rle, discover_fashionpedia, read_rows
+from wardrobe_seg.evaluate import resize_for_evaluation
 
 
 def test_decode_rle_uses_kaggle_column_major_order() -> None:
@@ -53,3 +54,21 @@ def test_csv_accepts_large_rle_field(tmp_path: Path) -> None:
             {"ImageId": "large", "EncodedPixels": large_rle, "Height": 1, "Width": 1, "ClassId": 0}
         )
     assert read_rows(csv_path)["large"][0]["EncodedPixels"] == large_rle
+
+
+def test_evaluation_resize_keeps_image_mask_and_boxes_aligned() -> None:
+    import torch
+
+    image = torch.zeros((3, 2000, 1000))
+    mask = torch.zeros((1, 2000, 1000), dtype=torch.uint8)
+    mask[:, 200:1000, 100:500] = 1
+    target = {
+        "masks": mask,
+        "boxes": torch.tensor([[100.0, 200.0, 500.0, 1000.0]]),
+        "area": torch.tensor([320_000.0]),
+    }
+    resized_image, resized_target = resize_for_evaluation(image, target, max_side=1000)
+    assert resized_image.shape == (3, 1000, 500)
+    assert resized_target["masks"].shape == (1, 1000, 500)
+    assert resized_target["boxes"].tolist() == [[50.0, 100.0, 250.0, 500.0]]
+    assert resized_target["area"].tolist() == [80_000.0]

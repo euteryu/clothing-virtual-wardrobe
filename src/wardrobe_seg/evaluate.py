@@ -10,6 +10,7 @@ import torch
 from pycocotools import mask as mask_util
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
+from torch.nn import functional as nn_functional
 from torch.utils.data import DataLoader
 
 from .data import FashionpediaDataset, FashionpediaPaths, collate_fn
@@ -22,14 +23,41 @@ def _encode_mask(mask: np.ndarray) -> dict[str, Any]:
     return encoded
 
 
+def resize_for_evaluation(
+    image: torch.Tensor, target: dict[str, torch.Tensor], max_side: int
+) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
+    """Bound postprocessed mask memory by resizing image and target together."""
+    height, width = image.shape[-2:]
+    scale = min(1.0, max_side / max(height, width))
+    if scale == 1.0:
+        return image, target
+    new_height = max(1, round(height * scale))
+    new_width = max(1, round(width * scale))
+    resized_image = nn_functional.interpolate(
+        image.unsqueeze(0), size=(new_height, new_width), mode="bilinear", align_corners=False
+    )[0]
+    resized_masks = nn_functional.interpolate(
+        target["masks"].unsqueeze(1).float(), size=(new_height, new_width), mode="nearest"
+    )[:, 0].to(torch.uint8)
+    resized_boxes = target["boxes"].clone()
+    resized_boxes[:, [0, 2]] *= new_width / width
+    resized_boxes[:, [1, 3]] *= new_height / height
+    resized_target = dict(target)
+    resized_target["masks"] = resized_masks
+    resized_target["boxes"] = resized_boxes
+    resized_target["area"] = resized_masks.flatten(1).sum(1).float()
+    return resized_image, resized_target
+
+
 def evaluate_checkpoint(
     paths: FashionpediaPaths,
     checkpoint_path: Path,
     output_dir: Path,
     max_images: int = 500,
-    batch_size: int = 2,
+    batch_size: int = 1,
     workers: int = 2,
     seed: int = 2026,
+    max_side: int = 1024,
 ) -> dict[str, Any]:
     if not torch.cuda.is_available():
         raise RuntimeError("Evaluation requires a Kaggle GPU; CUDA is unavailable")
@@ -66,6 +94,11 @@ def evaluate_checkpoint(
     started = time.perf_counter()
     with torch.inference_mode():
         for images, targets in loader:
+            resized = [
+                resize_for_evaluation(image, target, max_side)
+                for image, target in zip(images, targets, strict=True)
+            ]
+            images, targets = tuple(zip(*resized, strict=True))
             device_images = [image.to(device, non_blocking=True) for image in images]
             outputs = model(device_images)
             for image, target, output in zip(images, targets, outputs, strict=True):
@@ -90,14 +123,15 @@ def evaluate_checkpoint(
                         }
                     )
                     annotation_id += 1
+                output_boxes = output["boxes"].cpu()
+                output_labels = output["labels"].cpu()
+                output_scores = output["scores"].cpu()
+                output_masks = (output["masks"][:, 0] >= 0.5).to(torch.uint8).cpu()
+                del output
                 for box, label, score, mask in zip(
-                    output["boxes"].cpu(),
-                    output["labels"].cpu(),
-                    output["scores"].cpu(),
-                    output["masks"].cpu(),
-                    strict=True,
+                    output_boxes, output_labels, output_scores, output_masks, strict=True
                 ):
-                    binary_mask = mask[0].numpy() >= 0.5
+                    binary_mask = mask.numpy()
                     if not binary_mask.any():
                         continue
                     x1, y1, x2, y2 = box.tolist()
@@ -142,6 +176,8 @@ def evaluate_checkpoint(
         "ground_truth_instances": len(ground_truth["annotations"]),
         "predicted_instances": len(predictions),
         "runtime_seconds": round(time.perf_counter() - started, 2),
+        "evaluation_max_side": max_side,
+        "batch_size": batch_size,
         "mask_ap": stats[0],
         "mask_ap50": stats[1],
         "mask_ap75": stats[2],
@@ -152,4 +188,3 @@ def evaluate_checkpoint(
         json.dumps(report, indent=2), encoding="utf-8"
     )
     return report
-

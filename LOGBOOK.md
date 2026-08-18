@@ -19,6 +19,37 @@
 
 ## Run notes
 
+### 2026-08-18 - baseline training PASS; evaluation OOM
+
+- Notebook: `clothing-virtual-wardrobe-180826-1.2`, committed Save & Run All.
+- Training result: PASS on Tesla T4 using 4,000 images, batch size 2, and three
+  epochs (6,000 optimizer steps). Total measured training runtime was 5,419.19
+  seconds. Epoch runtimes were 1,825.15, 1,796.07, and 1,796.15 seconds.
+- Mean training loss improved from 1.1959 to 0.9272 to 0.7382. Epoch checkpoints
+  01, 02, and 03 were successfully written under
+  `/kaggle/working/outputs/baseline/` and preserved in the notebook output.
+- Evaluation result: FAIL for all three checkpoint cells immediately after the
+  first image. Depending on the image/checkpoint, torchvision attempted an
+  additional 4.00 GiB, 162 MiB with only 58.81 MiB free, or 12.26 GiB and
+  raised `torch.OutOfMemoryError`.
+- Root cause: evaluation passed original high-resolution Fashionpedia tensors
+  to Mask R-CNN in batches of two. Although the detector operates on internally
+  resized tensors, torchvision postprocessing pastes every predicted float mask
+  back to the supplied image dimensions. Images with dozens of predictions and
+  very large original dimensions therefore created multi-gigabyte mask tensors.
+  Training did not expose this because mask losses operate on cropped proposal
+  masks rather than pasted full-resolution inference masks.
+- Engineering error: the evaluation memory model and real maximum image
+  dimensions should have been tested before the committed run. A training smoke
+  test cannot validate inference postprocessing memory.
+- Correction: evaluate one image at a time; resize the image, reference masks,
+  boxes, and areas together to a maximum side of 1,024 pixels; threshold masks
+  to bytes before CPU transfer; and record the evaluation resolution in the
+  report. A geometry regression test covers this bounded-resolution path.
+- Decision: do not retrain. Attach the preserved notebook 1.2 output to a new
+  evaluation-only GPU notebook and evaluate all three saved checkpoints using
+  the corrected code and the same frozen validation selection.
+
 ### 2026-08-18 - Kaggle stage 02 GPU smoke training PASS
 
 - Notebook: `clothing-virtual-wardrobe-180826-1.1` live session.
