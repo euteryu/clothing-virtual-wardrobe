@@ -18,6 +18,28 @@
 
 ## Run notes
 
+### 2026-08-18 - Kaggle stage 02 GPU smoke training PASS
+
+- Notebook: `clothing-virtual-wardrobe-180826-1.1` live session.
+- Command: `python kaggle/02_smoke_train.py --input-root /kaggle/input
+  --max-images 64 --epochs 1`.
+- Intended proof: complete real-data load, mask decode, pretrained Mask R-CNN
+  construction, CUDA forward/backward optimization, checkpoint write, and
+  machine-readable report on a bounded sample.
+- Result: PASS on a Tesla T4. The 177 MB COCO-pretrained checkpoint downloaded
+  successfully. Training used 64 images, one epoch, and 32 optimizer steps.
+- Measurements: training runtime 29.4 seconds; step-1 loss 6.5087; step-10 loss
+  2.4593; step-20 loss 1.8812; step-30 loss 2.7558; final loss 1.5387. Total
+  observed cell time was roughly 50 seconds including setup/download.
+- Artifact: `/kaggle/working/outputs/smoke/smoke_model.pt`.
+- Interpretation: the end-to-end training path and accelerator are operational,
+  and loss is non-degenerate and broadly decreasing. The noisy individual
+  steps are expected for a tiny shuffled sample. This run does not establish
+  held-out segmentation quality and its checkpoint will not seed the baseline.
+- Decision: do not persist or attach the smoke checkpoint downstream. Size the
+  first baseline from this measured throughput, train afresh from COCO weights,
+  and add held-out COCO mask evaluation before spending a larger GPU budget.
+
 ### 2026-08-18 - Kaggle stage 01 initial failure and correction
 
 - Notebook: `clothing-virtual-wardrobe-180826-1.1`.
