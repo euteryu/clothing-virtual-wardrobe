@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-from wardrobe_seg.data import FashionpediaDataset, decode_rle, discover_fashionpedia
+from wardrobe_seg.data import FashionpediaDataset, decode_rle, discover_fashionpedia, read_rows
 
 
 def test_decode_rle_uses_kaggle_column_major_order() -> None:
@@ -40,3 +40,16 @@ def test_fixture_discovery_and_dataset(tmp_path: Path) -> None:
     assert target["boxes"].tolist() == [[0.0, 0.0, 2.0, 3.0]]
     assert int(target["masks"].sum()) == 4
 
+
+def test_csv_accepts_large_rle_field(tmp_path: Path) -> None:
+    csv_path = tmp_path / "train.csv"
+    large_rle = "1 1 " * 40_000
+    with csv_path.open("w", newline="", encoding="utf-8") as stream:
+        writer = csv.DictWriter(
+            stream, fieldnames=["ImageId", "EncodedPixels", "Height", "Width", "ClassId"]
+        )
+        writer.writeheader()
+        writer.writerow(
+            {"ImageId": "large", "EncodedPixels": large_rle, "Height": 1, "Width": 1, "ClassId": 0}
+        )
+    assert read_rows(csv_path)["large"][0]["EncodedPixels"] == large_rle

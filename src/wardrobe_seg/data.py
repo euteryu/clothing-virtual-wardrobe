@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import json
 import random
+import sys
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -68,6 +69,16 @@ def load_categories(labels_path: Path) -> tuple[dict[int, int], list[str]]:
 
 
 def read_rows(csv_path: Path) -> dict[str, list[dict[str, str]]]:
+    # High-resolution Fashionpedia masks can exceed Python's conservative
+    # 128 KiB default CSV-field limit. Use the platform's largest accepted
+    # value because these are trusted, mounted competition annotations.
+    limit = sys.maxsize
+    while True:
+        try:
+            csv.field_size_limit(limit)
+            break
+        except OverflowError:
+            limit //= 10
     rows: dict[str, list[dict[str, str]]] = defaultdict(list)
     with csv_path.open(encoding="utf-8", newline="") as stream:
         reader = csv.DictReader(stream)
@@ -145,4 +156,3 @@ class FashionpediaDataset(Dataset[tuple[torch.Tensor, dict[str, torch.Tensor]]])
 
 def collate_fn(batch: list[Any]) -> tuple[tuple[Any, ...], tuple[Any, ...]]:
     return tuple(zip(*batch, strict=True))
-
