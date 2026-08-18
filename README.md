@@ -43,6 +43,30 @@ Do not start a larger run until all three commands finish with `"status":
 "PASS"`. Save a notebook version after a successful smoke test so its outputs
 persist.
 
+## First measured baseline
+
+After the smoke result has been logged, use a fresh Kaggle notebook/session:
+
+```python
+!python kaggle/03_train_baseline.py --input-root /kaggle/input \
+  --max-images 4000 --epochs 3
+```
+
+This writes a resumable checkpoint after every epoch. Evaluate all three on the
+same frozen 500-image validation subset before selecting one:
+
+```python
+!python kaggle/04_evaluate.py --input-root /kaggle/input \
+  --checkpoint /kaggle/working/outputs/baseline/checkpoint_epoch_01.pt
+!python kaggle/04_evaluate.py --input-root /kaggle/input \
+  --checkpoint /kaggle/working/outputs/baseline/checkpoint_epoch_02.pt
+!python kaggle/04_evaluate.py --input-root /kaggle/input \
+  --checkpoint /kaggle/working/outputs/baseline/checkpoint_epoch_03.pt
+```
+
+Save & Run All is required for this baseline because its checkpoints, manifests,
+and reports are expensive outputs that must survive the live session.
+
 ## Local verification (CPU only)
 
 ```powershell
@@ -52,4 +76,3 @@ ruff check .
 ```
 
 Training data, credentials, checkpoints, and predictions must not be committed.
-

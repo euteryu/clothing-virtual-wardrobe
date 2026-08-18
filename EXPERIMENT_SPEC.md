@@ -18,6 +18,8 @@ Fashionpedia subset within a free Kaggle T4 session?
 - Replace classification/mask heads for Fashionpedia categories.
 - Optimizer: SGD, lr 0.005 adjusted by batch size, momentum 0.9, decay 0.0005.
 - Smoke budget: 64 images, one epoch, batch size 2.
+- First baseline budget: deterministic class-coverage subset of 4,000 training
+  images, three epochs, batch size 2. Save after every epoch.
 - Full budget will be chosen only after measured smoke runtime and memory.
 
 ## Evaluation
@@ -31,6 +33,8 @@ Fashionpedia subset within a free Kaggle T4 session?
 - CPU: inspection, validation, manifests, metric aggregation.
 - GPU: training and inference on one T4.
 - Persist checkpoints, resolved config, category mapping, and run report.
+- Evaluate each epoch checkpoint on the same 500-image validation subset and
+  select the highest mask AP.
 
 ## Stop/continue rule
 

@@ -104,6 +104,50 @@ def split_image_ids(
     return sorted(ids[val_count:] if split == "train" else ids[:val_count])
 
 
+def select_class_aware_ids(
+    image_ids: list[str],
+    rows: dict[str, list[dict[str, str]]],
+    max_images: int | None,
+    seed: int = 2026,
+    minimum_per_class: int = 5,
+) -> list[str]:
+    """Guarantee a small class-coverage floor, then sample the remainder uniformly."""
+    ids = sorted(image_ids)
+    if max_images is None or max_images >= len(ids):
+        return ids
+    if max_images < 1:
+        raise ValueError("max_images must be positive")
+    rng = random.Random(seed)
+    buckets: dict[int, list[str]] = defaultdict(list)
+    for image_id in ids:
+        for class_id in {int(row["ClassId"]) for row in rows[image_id]}:
+            buckets[class_id].append(image_id)
+    for bucket in buckets.values():
+        rng.shuffle(bucket)
+    selected: list[str] = []
+    seen: set[str] = set()
+    offsets = {class_id: 0 for class_id in buckets}
+    class_ids = sorted(buckets)
+    for _ in range(minimum_per_class):
+        for class_id in class_ids:
+            bucket = buckets[class_id]
+            offset = offsets[class_id]
+            while offset < len(bucket) and bucket[offset] in seen:
+                offset += 1
+            offsets[class_id] = offset + 1
+            if offset < len(bucket):
+                image_id = bucket[offset]
+                selected.append(image_id)
+                seen.add(image_id)
+                if len(selected) == max_images:
+                    return selected
+    if len(selected) < max_images:
+        remainder = [image_id for image_id in ids if image_id not in seen]
+        rng.shuffle(remainder)
+        selected.extend(remainder[: max_images - len(selected)])
+    return selected
+
+
 class FashionpediaDataset(Dataset[tuple[torch.Tensor, dict[str, torch.Tensor]]]):
     def __init__(
         self,
@@ -116,8 +160,7 @@ class FashionpediaDataset(Dataset[tuple[torch.Tensor, dict[str, torch.Tensor]]])
         self.rows = read_rows(paths.csv_path)
         self.category_map, self.category_names = load_categories(paths.labels_path)
         self.image_ids = split_image_ids(list(self.rows), split, seed=seed)
-        if max_images is not None:
-            self.image_ids = self.image_ids[:max_images]
+        self.image_ids = select_class_aware_ids(self.image_ids, self.rows, max_images, seed)
 
     def __len__(self) -> int:
         return len(self.image_ids)

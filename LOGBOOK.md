@@ -2,11 +2,12 @@
 
 ## Current status
 
-- Phase: local scaffold and verification.
-- Last completed checkpoint: Kaggle-first repository implemented.
-- Current result: not yet run against real Fashionpedia data.
-- Exact next action: create/push GitHub repository, attach official Kaggle data,
-  then run stages 00, 01, and 02 in order.
+- Phase: first measured baseline ready.
+- Last completed checkpoint: real-data T4 smoke training PASS.
+- Current result: 64 images, 32 steps, final loss 1.5387 in 29.4 seconds; no
+  held-out quality metric yet.
+- Exact next action: train the fixed 4,000-image, 3-epoch baseline, then evaluate
+  all epoch checkpoints on the frozen 500-image validation subset.
 
 ## Fixed decisions
 
