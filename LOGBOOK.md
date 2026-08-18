@@ -19,6 +19,28 @@
 
 ## Run notes
 
+### 2026-08-18 - corrected evaluation memory smoke PASS
+
+- Notebook: `clothing-virtual-wardrobe-180826-1.3-evaluation` live session.
+- Inputs: Fashionpedia competition data plus the preserved output of notebook
+  1.2. No training was repeated. The epoch-03 checkpoint resolved to
+  `/kaggle/input/notebooks/minseokryu5432/clothing-virtual-wardrobe-180826-1-2/outputs/baseline/checkpoint_epoch_03.pt`.
+- Command configuration: epoch-03 checkpoint, five frozen validation images,
+  batch size 1, and maximum evaluation side 1,024 pixels.
+- Intended proof: verify that coordinated image/target resizing and single-image
+  inference prevent the full-resolution mask-postprocessing OOM before running
+  the complete held-out evaluation.
+- Result: PASS. Five images containing 44 reference instances produced 223
+  predicted instances in 6.37 seconds without an OOM. Reported smoke metrics
+  were mask AP 0.5240, AP50 0.7159, AP75 0.5828, and AR100 0.5603.
+- Interpretation: the memory correction is operational. Metrics from only five
+  deliberately bounded images are not baseline evidence; absent classes appear
+  as null and uncertainty is extreme. They must not be quoted as final quality.
+- Decision: run all three epoch checkpoints against the exact same frozen
+  500-image validation selection at batch size 1 and max side 1,024. Select the
+  checkpoint by mask AP only after all three reports complete. Submit this
+  evaluation notebook with Save & Run All so reports persist.
+
 ### 2026-08-18 - baseline training PASS; evaluation OOM
 
 - Notebook: `clothing-virtual-wardrobe-180826-1.2`, committed Save & Run All.
