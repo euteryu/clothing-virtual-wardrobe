@@ -64,3 +64,16 @@ shift, rare-class recall, boundaries, or latency. Do not tune from final tests.
   natural set. Because it has already been inspected against the baseline, use
   a new independently frozen consented photo set only after the improved model
   and validation operating threshold are locked.
+
+## Final operating-policy comparison
+
+- Epochs 04 and 05 are practically tied in global COCO mask AP: 0.222325 versus
+  0.222213. Retain epoch 04 as the nominal primary-metric winner, but do not
+  claim that this 0.000112 difference establishes meaningful superiority.
+- For the actual main-garment application, sweep confidence independently for
+  both checkpoints on the same frozen validation images and classes 1-13.
+  Select the checkpoint/threshold pair by maximum validation micro F1, with
+  recall, precision, and then later epoch as deterministic tie-breakers.
+- This finalization does not add training or inspect the old personal set. It
+  converts two statistically unresolved checkpoints into one reproducible
+  operating policy suitable for a new external applicability test.

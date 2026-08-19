@@ -1,18 +1,96 @@
 # Project logbook
 
+## Research direction and essential reading
+
+- Product thesis: garment segmentation is not the end product. Its value must be
+  demonstrated through a downstream outcome such as reliable garment selection
+  from uncontrolled photos, reusable wardrobe-asset creation, improved virtual
+  try-on fidelity/control, search and outfit retrieval, or user-correctable
+  failure handling. Higher mask AP alone is insufficient evidence of usefulness.
+- Most promising project question: for messy person-to-person references with
+  multiple people, garments, layering, occlusion, and casual framing, does an
+  explicit, user-correctable instance-selection and garment-reconstruction stage
+  improve final virtual try-on success over direct or built-in preprocessing?
+  Evaluate the final images, not merely intermediate masks.
+- Core ablation: compare direct reference VTON, VTON using its native parser,
+  our selected instance/cutout, and our selection followed by virtual try-off
+  reconstruction. Freeze the person/garment pairs and model settings. Measure
+  correct-garment transfer, logo/texture/detail preservation, identity and
+  non-target clothing preservation, occlusion/layering failures, artifacts,
+  latency, and human preference; also record segmentation-to-output causal
+  failures and the benefit of a simple user mask correction.
+- Current public gaps that make this worthwhile are robust in-the-wild and
+  person-to-person operation; selecting one item from multi-person, layered, or
+  multi-garment references; exact high-frequency garment fidelity; controllable
+  preservation of the person's identity/body/non-target clothing; full outfits,
+  accessories, sizing and physically truthful fit; reliable evaluation beyond
+  paired reconstruction metrics; uncertainty/failure detection; and practical
+  privacy, latency, licensing, and reproducibility.
+- Essential reading, in priority order: MGT / *Enhancing Person-to-Person
+  Virtual Try-On with Multi-Garment Virtual Try-Off* (2025); TryOffDiff /
+  *Virtual Try-Off via High-Fidelity Garment Reconstruction Using Diffusion
+  Models* (2025); RefTon / *Reference Person Shot Assist Virtual Try-On* (CVPR
+  2026); TryOnDiffusion / *A Tale of Two UNets* (CVPR 2023); IDM-VTON (ECCV
+  2024); CatVTON (ICLR 2025); UP-VTON (ICCVW 2025); BooW-VTON (CVPR 2025);
+  Street TryOn (WACV 2025); VTBench (2025); DualFit (ICCVW 2025); Dress Code
+  (2022); and Fashionpedia (ECCV 2020).
+- Novelty boundary: garment extraction before VTON, mask-versus-mask-free VTON,
+  and try-off reconstruction already exist. A credible contribution would need
+  a sharply specified unresolved setting, dataset/evaluation protocol, or
+  demonstrated integration benefit. Do not claim novelty merely for connecting
+  segmentation to a pretrained VTON model.
+
+## Product modes and human interaction boundary
+
+- Consumer VTON should be zero-click in the normal case: the user uploads one
+  target-person photo and one desired-clothing reference, and the pipeline
+  automatically selects/preprocesses the garment and generates the try-on.
+  Mask selection or repair is an exceptional recovery path, not a routine
+  requirement imposed on ordinary users.
+- Dataset creation is a separate researcher workflow. For new custom labelled
+  images, run the current model or a promptable segmenter to pre-annotate, then
+  review and correct masks/categories in CVAT. Use SAM 2 click/box prompting for
+  rapid mask refinement and polygon/brush editing only for difficult boundaries.
+  Export a versioned COCO instance-segmentation dataset, run annotation QA, and
+  create image-level train/validation/test splits before any model fitting.
+- Corrections made while using the consumer product must not silently become
+  training data. They require explicit consent, de-identification/retention
+  rules, dataset versioning, and a new predefined experiment and split.
+- A reception-camera application is a distinct still-image compliance product,
+  not VTON and not necessarily video learning. A guest can pause at a marked
+  position for a consented still photograph; person/garment detection,
+  segmentation, attributes, and a configurable rule engine then produce green
+  (confidently compliant), amber (uncertain/occluded; human review), red
+  (confident rule conflict; human-confirmed response), or unable-to-assess.
+- Prefer assisted decision support over autonomous admission denial. Do not use
+  face recognition; anonymous short-lived visit/session IDs are sufficient.
+  Production validation must cover the actual entrance camera, distance,
+  lighting, poses, garments, demographic variation, uncertainty calibration,
+  accessibility, privacy/signage, security, retention, and human override.
+- The present model is only one component of reception compliance. It still
+  needs garment attributes/colour, person-to-garment association, calibrated
+  rule-level confidence, and domain-specific evaluation. A controlled still
+  capture deliberately avoids an unnecessary video-training project.
+
 ## Current status
 
-- Phase: frozen baseline completed its first mixed natural-photo applicability
-  test and did not meet the initial usability target.
-- Selected inference policy: epoch-03 checkpoint, main garment classes 1-13,
-  confidence threshold 0.6, and predicted mask threshold 0.5.
-- Current validation operating point: 544 true positives, 258 false positives,
-  and 368 false negatives; micro precision 0.6783, recall 0.5965, and F1 0.6348.
+- Phase: the single predefined improvement experiment is complete. Epoch 04 is
+  the nominal global-AP winner, but epochs 04 and 05 are practically tied; their
+  0.000112 AP difference is not evidence of user-visible superiority.
+- Final application model is pending stage 08, which will compare both epochs
+  after independently selecting their confidence thresholds on main garment
+  classes 1-13. The old epoch-03 threshold of 0.6 is not assumed transferable.
+- Previous epoch-03 validation operating point: 544 true positives, 258 false
+  positives, and 368 false negatives; micro precision 0.6783, recall 0.5965,
+  and F1 0.6348 at confidence 0.6. This remains historical, not the epoch-04
+  policy.
 - Applicability result: 12 of 20 images avoided a catastrophic required-garment
   miss (60%), below the initial target of 16 of 20 (80%).
-- Exact next action: run the predefined epoch-04/05 continuation on one Kaggle
-  T4, then evaluate both checkpoints on the same frozen 500-image validation
-  subset and compare with epoch 03 by mask AP only.
+- Exact next action: run stage 08 to sweep confidence for epochs 04 and 05 on
+  the frozen validation set, lock one application policy by main-garment micro
+  F1, and then test it once on a new independently
+  frozen consented applicability set. Do not reuse the previously inspected 20
+  images for model selection or a fresh performance claim.
 
 ## Fixed decisions
 
@@ -21,8 +99,130 @@
 - Official validation is model-selection data; personal photos form a later
   frozen applicability test.
 - No run or check is described as passed until actually executed.
+- Retrospective hyperparameter rationale: batch size 2 meant two images per
+  optimizer update and was chosen as a conservative, conventional fit for
+  high-resolution Mask R-CNN training on one 16 GB T4 after the real GPU smoke
+  test. It was not established as globally optimal. A batch of thousands would
+  exceed both the 4,000-image subset and GPU memory; instance segmentation must
+  retain large feature maps, proposals, and masks. The SGD learning rate,
+  momentum 0.9, and weight decay 0.0005 came from standard torchvision Mask
+  R-CNN transfer-learning practice with adjustment for the small batch. The
+  smooth loss decline and initial validation-AP gains demonstrate stability,
+  not proof that the hyperparameters were optimal.
+- Class balance means primarily unequal labelled instances across categories:
+  common tops, pants, dresses, and shoes provide much more learning signal than
+  rare vest, cape, jumpsuit, or decorative-part classes. Class-aware sampling,
+  loss weighting, more rare examples, or a product-specific merged ontology are
+  possible remedies. Foreground/background and scale imbalance are distinct:
+  distant or small garments occupy few pixels and may need crops, scale
+  augmentation, higher resolution, and representative small-object examples.
+- Training loss is a composite optimization signal for classification, boxes,
+  masks, proposals, and objectness on training images. Its theoretical lower
+  bound is approximately zero but its numeric scale is not a percentage and is
+  not a direct quality measure. Validation AP measures unseen ranked detection,
+  classification, and mask overlap. Epoch 05's lower training loss alongside
+  flat validation AP indicates saturation under this data/schedule, not that
+  epoch 05 is necessarily worse or that hundreds of unchanged epochs are useful.
+- Product-architecture clarification: the current Mask R-CNN is an instance-
+  segmentation component for locating, classifying, masking, and extracting
+  garments. It cannot synthesize a photo of a person wearing a different
+  garment. The stated end goal of person photo + desired garment/outfit photo
+  -> try-on image requires a separate generative virtual-try-on model, normally
+  a large pretrained diffusion-based system. Segmentation may remain useful for
+  wardrobe ingestion, garment conditioning, preprocessing, and diagnostics,
+  but it is supporting infrastructure rather than the core try-on generator.
+- Do not expand this bounded experiment into training a try-on generator from
+  scratch on one free T4. Complete the predefined epoch-04/05 segmentation
+  improvement for its educational evidence, then evaluate pretrained virtual-
+  try-on integration as a distinct project phase with its own data, metrics,
+  privacy analysis, and compute plan.
+- Pretrained VTON integration plan: begin with a public model that accepts both
+  person images and flat-lay or model-worn garment references. Compare two
+  fixed inputs for the same person/garment pairs: (A) the original garment
+  reference and (B) our segmenter's selected/cropped garment asset. Judge the
+  final try-on outputs for garment-detail preservation, person identity, pose,
+  artifacts, and usability. This is an end-to-end preprocessing ablation, not
+  necessarily a direct contest between two segmentation masks: a maskless VTON
+  model may condition on the full garment reference through learned features or
+  attention without exposing or even computing an equivalent garment mask.
+- Expected role of our segmenter in that pipeline: select a requested garment
+  from crowded, multi-person, or multi-garment source photos; assign a practical
+  category; create a reusable transparent wardrobe asset; and provide explicit
+  diagnostics or user correction. For a clean single-garment product image,
+  segmentation may be unnecessary or harmful if it removes useful context or
+  garment detail, so routing should be conditional rather than mandatory.
+- Verified FASHN VTON v1.5 preprocessing detail: for a model-worn garment
+  reference, its public pipeline runs DWPose and its 18-class SegFormer human
+  parser on both the target-person and garment-reference images, then calls
+  `create_garment_image` with the garment parse. For a flat-lay reference it
+  disables garment masking and uses dummy garment pose. Therefore the cleanest
+  ablation is not merely raw photo versus a standalone transparent PNG: preserve
+  FASHN's target-person preprocessing and garment-pose path, but compare its
+  garment-parser mask with our selected instance mask when constructing the
+  garment-conditioning image. This tests whether explicit instance selection
+  helps, especially in multi-person, multi-garment, or layered references.
+- Prior-art clarification: external garment extraction and mask/mask-free VTON
+  comparisons are established research topics, so this project should not claim
+  novelty for that idea. Closest work includes a 2022 VTON clothing-extraction
+  module, TryOnDiffusion's person-to-person formulation, UP-VTON's unified
+  mask/mask-free guidance, and TryOffDiff/MGT's reconstruction of standardized
+  garments from clothed people before VTON. MGT explicitly reports using its
+  reconstructed garments with a VTON model for person-to-person try-on.
+- Revised practical pipeline candidate: our instance segmenter selects the
+  requested garment and category from an uncontrolled source photo; a pretrained
+  virtual-try-off model may then reconstruct a canonical garment image; a
+  pretrained VTON model renders it on the target person. Compare this against
+  direct person-reference VTON and FASHN's built-in parser. Our contribution is
+  a reproducible, user-correctable integration and evaluation for messy source
+  photos, not a new VTON architecture. TryOffDiff/MGT is suitable for academic
+  prototyping but its SSPL release is not a straightforward commercial license.
 
 ## Run notes
+
+### 2026-08-19 - notebook 1.5 artifacts secured locally
+
+- Source archive: `C:\Users\minse\Downloads\results.zip`, retained unchanged as
+  the original downloaded notebook-output bundle (778,618,704 bytes).
+- Extracted the selected epoch-04 checkpoint, training report and manifest, both
+  evaluation reports, and frozen validation manifest under
+  `C:\Users\minse\Downloads\wardrobe_model\notebook_1_5\`. Copied the active
+  model to `C:\Users\minse\Downloads\wardrobe_model\checkpoint_epoch_04.pt`.
+- Active checkpoint verification: 368,543,911 bytes; SHA-256
+  `2EAB060EE51CAADBF20B2FCBFDCC9702B719ACB13FFE4FD5EB7E4FD12F292FE3`;
+  PyTorch CPU load succeeded, reported epoch 4, and contained 432 model-state
+  tensors. Weights and reports remain outside Git as required.
+- Training provenance from the downloaded report: PASS on a Tesla T4 using the
+  fixed 4,000 images and batch size 2. Epochs 04 and 05 took 3,357.8 seconds in
+  total; mean training loss was 0.670704 and 0.620183 respectively. Lower epoch-
+  05 training loss did not override its slightly worse frozen validation AP.
+
+### 2026-08-19 - single improvement evaluation PASS; epoch 04 selected
+
+- Epochs 04 and 05 were evaluated on the same deterministic 500-image validation
+  subset containing 4,133 references, with batch size 1 and maximum side 1,024.
+- Epoch 04: mask AP 0.222325, AP50 0.339174, AP75 0.235880, AR100 0.345195;
+  17,670 predictions; runtime 327.88 seconds. Size AP was 0.100 small, 0.195
+  medium, and 0.256 large.
+- Epoch 05: mask AP 0.222213, AP50 0.338248, AP75 0.235111, AR100 0.345974;
+  17,289 predictions; runtime 333.29 seconds. Size AP was 0.108 small, 0.194
+  medium, and 0.255 large.
+- Baseline epoch 03 had mask AP 0.2170, AP50 0.3305, AP75 0.2328, AR100
+  0.3425, and 19,337 predictions on the identical evaluation population.
+- Primary-metric record: epoch 04 is the nominal winner and gains approximately
+  0.0053 absolute mask AP (2.45% relative) over epoch 03. Epoch 05 is lower by
+  only 0.000112 AP while having slightly higher AR100, better small-object AP,
+  fewer predictions, and lower training loss. Engineering interpretation: the
+  two final checkpoints are practically tied, so global AP alone does not show
+  which users would experience as better.
+- Interpretation: the intervention produced a real but small held-out gain and
+  then plateaued. It does not demonstrate that the earlier 60% applicability
+  result has improved, and it does not justify additional epochs or another
+  intervention. The old epoch-03 confidence threshold is not automatically
+  valid for epoch 04.
+- Required continuation: compare both checkpoints after independently choosing
+  their main-garment validation thresholds, then freeze the checkpoint/threshold
+  pair with the best validation micro F1. Do not use personal photos or training
+  loss for this final application-policy comparison.
 
 ### 2026-08-19 - single improvement experiment predefined
 

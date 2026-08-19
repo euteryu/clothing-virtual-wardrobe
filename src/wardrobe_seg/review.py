@@ -124,6 +124,47 @@ def _scores(counts: tuple[int, int, int]) -> dict[str, float | int]:
     }
 
 
+def select_application_policy(reports: list[dict[str, Any]]) -> dict[str, Any]:
+    """Select the checkpoint and its threshold by main-garment validation F1."""
+    if not reports:
+        raise ValueError("At least one operating-point report is required")
+    candidates: list[dict[str, Any]] = []
+    seen_epochs: set[int] = set()
+    for report in reports:
+        epoch = int(report["checkpoint_epoch"])
+        if epoch in seen_epochs:
+            raise ValueError(f"Duplicate checkpoint epoch: {epoch}")
+        seen_epochs.add(epoch)
+        threshold = str(report["selected_confidence_threshold"])
+        scores = report["confidence_sweep"][threshold]
+        candidates.append(
+            {
+                "checkpoint": report["checkpoint"],
+                "checkpoint_epoch": epoch,
+                "confidence_threshold": float(threshold),
+                **scores,
+            }
+        )
+    selected = max(
+        candidates,
+        key=lambda item: (
+            float(item["f1"]),
+            float(item["recall"]),
+            float(item["precision"]),
+            int(item["checkpoint_epoch"]),
+        ),
+    )
+    return {
+        "status": "PASS",
+        "selection_scope": "main garment classes 1-13 on frozen validation data",
+        "selection_rule": "maximum micro F1; ties broken by recall, precision, then epoch",
+        "candidates": candidates,
+        "selected_checkpoint": selected["checkpoint"],
+        "selected_checkpoint_epoch": selected["checkpoint_epoch"],
+        "selected_confidence_threshold": selected["confidence_threshold"],
+    }
+
+
 def _render_triptych(
     image: torch.Tensor,
     target: dict[str, torch.Tensor],

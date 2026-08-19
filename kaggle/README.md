@@ -11,7 +11,13 @@ Run one version-controlled command per notebook stage:
 05 frozen applicability test and error review
 06 local frozen-photo inference
 07 single improvement: resume epoch 03 through epoch 05
+08 finalization: compare epoch 04/05 validation operating points and freeze policy
 ```
 
 The baseline budget follows the measured 64-image smoke run. Evaluate every
 epoch on the exact same validation manifest and select by mask AP, not loss.
+
+Stage 08 acknowledges that epochs 04 and 05 are practically tied in global COCO
+mask AP. It sweeps the application confidence threshold for both checkpoints on
+main garment classes 1-13, then selects the deployable checkpoint/threshold pair
+by validation micro F1. This is the final segmentation operating-policy step.
