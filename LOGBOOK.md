@@ -178,6 +178,33 @@
 
 ## Run notes
 
+### 2026-08-19 - 20-photo domain-annotation package prepared
+
+- User-directed scope change: repurpose the already inspected 20 mixed natural
+  photos as a small domain-adaptation dataset rather than retaining them as an
+  external test. The historical epoch-03 applicability result remains valid as
+  a record of what occurred, but these images can no longer support a future
+  unseen-test claim.
+- Added stage 09 to create CVAT-compatible, recall-oriented COCO preannotations
+  from the locked epoch-05 model. Proposals use confidence 0.3 so annotators can
+  delete false positives while seeing more plausible low-confidence garments.
+  Training on uncorrected proposals is prohibited because it would reproduce the
+  model's known omissions and errors.
+- Local stage-09 run PASS on CPU in 83.76 seconds: 20 resized images, 59 proposed
+  main-garment instances, 13 categories, maximum side 1,024. The COCO file loaded
+  successfully with pycocotools and every referenced image exists.
+- Private outputs remain outside Git:
+  `C:\Users\minse\Downloads\wardrobe_domain_annotations\` and import archive
+  `C:\Users\minse\Downloads\wardrobe_domain_annotations.zip` (7,946,731 bytes).
+- Required human step: import the images and COCO preannotations into CVAT;
+  inspect every image; delete false instances; correct categories and mask
+  boundaries; add every missed garment; then export corrected COCO 1.0. Only
+  that corrected export is eligible for supervised domain adaptation.
+- Evaluation constraint: because the same 20 images become development/training
+  material, a final all-20 model has no independent natural-photo test here. Use
+  image-level cross-validation for internal evidence and retain frozen
+  Fashionpedia validation evaluation as a catastrophic-forgetting guard.
+
 ### 2026-08-19 - final segmentation operating policy PASS
 
 - Stage 08 evaluated epochs 04 and 05 on the same frozen 500-image validation

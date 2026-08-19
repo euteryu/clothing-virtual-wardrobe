@@ -80,3 +80,17 @@ shift, rare-class recall, boundaries, or latency. Do not tune from final tests.
 - Result: epoch 05 at confidence 0.6 achieved the higher main-garment validation
   micro F1 (0.651869 versus 0.647773 for epoch 04 at 0.6) and is therefore the
   final application checkpoint. Predicted masks remain binarized at 0.5.
+
+## Subsequent domain-adaptation scope change
+
+- After closing the bounded segmentation experiment, the user explicitly chose
+  to repurpose the previously inspected 20-photo applicability set as domain-
+  adaptation data instead of collecting a new external set. This does not alter
+  the historical 12/20 epoch-03 result, but those images cease to be test data.
+- The images require human-corrected instance masks before supervised training.
+  Model proposals are annotation aids, not labels: training directly on them
+  would reinforce the model's known misses, class errors, and boundary errors.
+- With no new external images, subsequent results may demonstrate fitting or
+  cross-validation within these 20 images but cannot establish generalization to
+  unseen natural photographs. Retain the frozen Fashionpedia validation set to
+  monitor catastrophic forgetting.
