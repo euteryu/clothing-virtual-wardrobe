@@ -19,6 +19,27 @@
 
 ## Run notes
 
+### 2026-08-19 - operating-point and qualitative review submitted
+
+- Notebook: `clothing-virtual-wardrobe-180826-1.4-review`, submitted with Save &
+  Run All; result pending at the time of this entry.
+- Inputs: Fashionpedia competition data and the preserved notebook-1.2 output.
+  Only the selected epoch-03 checkpoint is used; no training is repeated and
+  notebook-1.3 evaluation output is not a dependency.
+- Code version: commit `f8aaa38`.
+- Fixed evaluation population: the same deterministic 500-image validation
+  subset, maximum side 1,024, main garment category IDs 1 through 13 only.
+- Purpose: sweep confidence thresholds 0.3 through 0.9, match predicted and
+  reference masks at IoU 0.5, select the threshold with maximum validation
+  micro-F1, and render six best plus six worst validation triptychs in the order
+  input / reference / prediction.
+- Expected runtime: approximately 10-20 minutes; allow up to 30 minutes if mask
+  matching or Kaggle output persistence is slower. This entry does not claim
+  the run passed or that a threshold was selected.
+- Required handover: record the full threshold sweep, selected threshold,
+  runtime, output counts, and visual failure themes before freezing the
+  inference policy or testing personal photos.
+
 ### 2026-08-19 - checkpoint comparison and model selection
 
 - All checkpoints were evaluated on the identical frozen 500-image validation
