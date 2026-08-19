@@ -2,12 +2,17 @@
 
 ## Current status
 
-- Phase: first measured baseline ready.
-- Last completed checkpoint: real-data T4 smoke training PASS.
-- Current result: 64 images, 32 steps, final loss 1.5387 in 29.4 seconds; no
-  held-out quality metric yet.
-- Exact next action: train the fixed 4,000-image, 3-epoch baseline, then evaluate
-  all epoch checkpoints on the frozen 500-image validation subset.
+- Phase: frozen baseline completed its first mixed natural-photo applicability
+  test and did not meet the initial usability target.
+- Selected inference policy: epoch-03 checkpoint, main garment classes 1-13,
+  confidence threshold 0.6, and predicted mask threshold 0.5.
+- Current validation operating point: 544 true positives, 258 false positives,
+  and 368 false negatives; micro precision 0.6783, recall 0.5965, and F1 0.6348.
+- Applicability result: 12 of 20 images avoided a catastrophic required-garment
+  miss (60%), below the initial target of 16 of 20 (80%).
+- Exact next action: run the predefined epoch-04/05 continuation on one Kaggle
+  T4, then evaluate both checkpoints on the same frozen 500-image validation
+  subset and compare with epoch 03 by mask AP only.
 
 ## Fixed decisions
 
@@ -18,6 +23,138 @@
 - No run or check is described as passed until actually executed.
 
 ## Run notes
+
+### 2026-08-19 - single improvement experiment predefined
+
+- Evidence: the baseline missed a required garment in 8 of 20 mixed natural
+  photos, while frozen in-domain mask AP rose monotonically from 0.1562 to
+  0.1825 to 0.2170 across baseline epochs 01-03.
+- Predefined question: does conservative continuation improve mask AP on the
+  unchanged frozen validation subset without changing training data,
+  architecture, or ontology?
+- Intervention: resume the exact 4,000-image epoch-03 checkpoint, including its
+  optimizer, scheduler, and AMP scaler. Train exactly epochs 04 and 05. The
+  restored learning rates are 0.0005 and 0.00005 respectively; batch size 2,
+  seed 2026, and all other settings remain fixed.
+- Model selection: evaluate epochs 03, 04, and 05 on the identical frozen
+  500-image validation subset at maximum side 1,024 and select strictly by mask
+  AP. Do not choose using loss, personal photos, or qualitative preference.
+- Stop rule: no extra epochs or second intervention after results. After the
+  checkpoint and a validation-only confidence threshold are locked, any final
+  applicability measurement requires a new independently frozen photo set; the
+  already inspected 20-photo set is not reused for selection or a fresh claim.
+- Implementation: `kaggle/07_continue_training.py` rejects any source other
+  than a 4,000-image epoch-03 checkpoint. Resume training also verifies the
+  checkpoint subset size and records the learning rate used for each epoch.
+
+### 2026-08-19 - frozen mixed natural-photo applicability test: target FAIL
+
+- Scope: 20 consented natural photos containing varied framing, lighting,
+  distance, single/multiple people, and layered outfits. The set mixes personal
+  uploads and internet-sourced images, so it is not a pure personal-phone test.
+- Expected garment instances and the catastrophic-miss scoring rule were frozen
+  by visual inspection before model inference. One post-run clerical correction
+  changed photo 005 from stale labels belonging to the replaced prior image to
+  the two tops that had been visually identified before inference; this was a
+  manifest transcription correction, not output-driven relabelling.
+- Inference used the selected epoch-03 checkpoint on CPU with main garment
+  classes 1-13, confidence 0.6, mask threshold 0.5, and maximum side 1,024.
+  It completed all 20 images in 151.33 seconds and wrote 20 overlays, 45
+  transparent cutouts, and a machine-readable report.
+- Result: 12 of 20 images passed the frozen catastrophic-miss rule (60%). The
+  initial usability target required at least 16 of 20 (80%), so the target was
+  not met. Failed images were 001, 002, 003, 004, 006, 010, 012, and 014.
+- Whole garments were missed in a low-quality video frame and a distant subject;
+  one three-person image detected only two dresses. Other failures involved a
+  merged upper/lower outfit, a dress reduced to a pants-region mask, a largely
+  missed light jacket, a missed sweater, and failure to separate a shirt under
+  a jacket.
+- Successful cases show useful capability: clean top/bottom outfits were
+  usually separated, two-person scenes could yield all required instances, and
+  several distant or layered examples worked. Boundaries were often credible
+  when an instance was found.
+- Fine-grained ontology confusion remained frequent: shirts or overshirts were
+  labelled jackets, and sweaters or shirts were labelled generic tops. One
+  image also produced duplicate overlapping pants/shorts predictions.
+- Artifacts remain outside Git under
+  `C:\Users\minse\Downloads\wardrobe_personal_results`: frozen expectations,
+  raw inference report, scored assessment, overlays, and cutouts. The private
+  photos, predictions, and checkpoint are not committed.
+- Decision: report this as a failed initial usability target, not a deployment
+  success. Do not adjust the checkpoint or confidence threshold using these
+  photos. Any improvement must be defined and selected using training/frozen
+  validation data only; this applicability set remains untouched final evidence.
+
+### 2026-08-19 - CPU personal-photo inference runner prepared
+
+- Added `kaggle/06_personal_inference.py` and reusable inference code for the
+  frozen 20-photo applicability test on a CPU-only Windows computer.
+- The runner enforces exactly 20 supported image files by default and preserves
+  the selected policy: epoch-03 weights, classes 1-13, confidence threshold
+  0.6, mask threshold 0.5, and maximum side 1,024. It does not accept threshold
+  overrides from the command line.
+- Outputs are written outside the private input-photo directory and comprise a
+  labelled overlay per photo, a transparent PNG cutout per detected garment,
+  and a machine-readable `personal_inference_report.json`.
+- The epoch-03 checkpoint is not present in the local repository or downloaded
+  notebook-1.4 review bundle. It must be downloaded separately from the
+  preserved notebook-1.2 output and kept outside Git.
+- Local verification: `pytest -q` reported 9 passed and `ruff check .` passed.
+
+### 2026-08-19 - qualitative validation review completed; policy frozen
+
+- Reviewed all 12 saved validation triptychs: the six lowest-F1 and six
+  highest-F1 eligible images at the selected confidence threshold of 0.6.
+  These deliberately selected extremes illustrate failure modes but are not a
+  representative estimate of their prevalence.
+- Strong cases contained one or two large, prominent garments. Dresses, tops,
+  pants, and skirts were localized with close reference/prediction agreement;
+  masks generally followed the visible silhouette, including pose and fringe.
+- The clearest recurring failure was confusion between visually adjacent
+  garment classes: sweater versus top, coat versus jacket, and jumpsuit versus
+  pants. Some lowest-F1 examples therefore contained a visually useful mask but
+  received no true positive because matching requires both the exact class and
+  mask IoU of at least 0.5.
+- Layered and occluded outfits were difficult. In one example a coat, sweater,
+  and pants reference was reduced to one jacket prediction; an unusual furry
+  cape/jacket/dress combination produced no prediction at 0.6.
+- Scale and framing were also material. A distant person with several garments
+  produced no prediction at 0.6, while a cropped jumpsuit was identified only
+  as the visible pants region. These observations agree with the earlier weak
+  small-object AP and expose a likely risk for casual phone photos.
+- Boundary quality was not the primary issue in the successful examples. The
+  dominant visible risks were missed instances and fine-grained ontology
+  confusion, especially under layering, unusual silhouettes, distance, or
+  truncation.
+- Decision: freeze epoch 03, main garment classes 1-13, confidence threshold
+  0.6, evaluation maximum side 1,024, and predicted mask threshold 0.5. Do not
+  tune these choices on personal photos. Proceed to a separate, frozen personal
+  applicability test and report catastrophic main-garment misses explicitly.
+
+### 2026-08-19 - operating-point review PASS
+
+- Notebook: `clothing-virtual-wardrobe-180826-1.4-review`, completed from the
+  preserved notebook-1.2 epoch-03 checkpoint at commit `f8aaa38`.
+- Evaluation population: the same deterministic 500-image validation subset,
+  maximum side 1,024, restricted to the 13 main garment categories. Predicted
+  and reference masks were matched at IoU 0.5.
+- Result: PASS in 303.36 seconds. The confidence sweep selected 0.6 by maximum
+  validation micro-F1. At that threshold there were 544 true positives, 258
+  false positives, and 368 false negatives: precision 0.6783, recall 0.5965,
+  and F1 0.6348.
+- Sweep F1 by confidence threshold: 0.3 = 0.5743, 0.4 = 0.6092, 0.5 =
+  0.6161, 0.6 = 0.6348, 0.7 = 0.6277, 0.8 = 0.6055, and 0.9 = 0.5349.
+- Artifacts: `outputs/review/operating_point_report.json` and 12 qualitative
+  triptychs under `outputs/review/qualitative/`, comprising six lowest-F1 and
+  six highest-F1 eligible validation images in input / ground-truth /
+  prediction order.
+- Interpretation: 0.6 is the fixed operating threshold for this checkpoint and
+  class scope. This validation optimization is not personal-photo or deployment
+  evidence, and the reported micro metrics use mask IoU 0.5 rather than COCO
+  mask AP.
+- Decision pending: visually inspect the 12 triptychs and record recurring
+  failure themes before freezing the policy and starting the untouched
+  personal-photo applicability test.
 
 ### 2026-08-19 - operating-point and qualitative review submitted
 

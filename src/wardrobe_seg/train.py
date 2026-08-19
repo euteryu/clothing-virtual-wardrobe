@@ -60,6 +60,8 @@ def train_epochs(
         state = torch.load(resume, map_location="cpu", weights_only=False)
         if state["categories"] != dataset.category_names or state["seed"] != seed:
             raise ValueError("Resume checkpoint category mapping or seed does not match")
+        if int(state["max_images"]) != max_images:
+            raise ValueError("Resume checkpoint training subset size does not match")
         model.load_state_dict(state["model"])
         optimizer.load_state_dict(state["optimizer"])
         scheduler.load_state_dict(state["scheduler"])
@@ -81,6 +83,7 @@ def train_epochs(
         model.train()
         losses: list[float] = []
         epoch_started = time.perf_counter()
+        learning_rate = float(optimizer.param_groups[0]["lr"])
         for step, (images, targets) in enumerate(loader, start=1):
             images = [image.to(device, non_blocking=True) for image in images]
             moved_targets = _move_targets(targets, device)
@@ -104,6 +107,7 @@ def train_epochs(
         torch.cuda.synchronize()
         epoch_report = {
             "epoch": epoch + 1,
+            "learning_rate": learning_rate,
             "mean_loss": sum(losses) / len(losses),
             "final_loss": losses[-1],
             "runtime_seconds": round(time.perf_counter() - epoch_started, 2),

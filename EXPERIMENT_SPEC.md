@@ -41,3 +41,26 @@ Fashionpedia subset within a free Kaggle T4 session?
 Accept the baseline if it completes reproducibly and produces non-degenerate
 held-out predictions. Continue only for an observed failure such as domain
 shift, rare-class recall, boundaries, or latency. Do not tune from final tests.
+
+## Single improvement experiment
+
+- Motivation: the frozen mixed natural-photo applicability test missed required
+  garments in 8 of 20 images, particularly upper garments, layered clothing,
+  distant subjects, and a multi-person dress instance. In-domain validation AP
+  had also improved monotonically through the fixed third baseline epoch.
+- Question: does conservative continuation of the same model on the exact same
+  4,000-image training subset improve frozen validation mask AP without changing
+  the data, architecture, or ontology?
+- Intervention: resume the epoch-03 optimizer, scheduler, scaler, and model;
+  train epochs 04 and 05 only. The restored schedule uses learning rate 0.0005
+  for epoch 04 and 0.00005 for epoch 05. All other baseline settings remain
+  unchanged.
+- Selection: evaluate epochs 03, 04, and 05 on the identical frozen 500-image
+  validation subset at maximum side 1,024. Select strictly by mask AP; AP50,
+  AP75, AR100, per-class results, runtime, and prediction count are diagnostics.
+- Stop: this is the one allowed evidence-driven improvement. Do not add epochs,
+  change thresholds, or try another intervention after seeing its results.
+- Final applicability: never train or select using the existing 20-photo mixed
+  natural set. Because it has already been inspected against the baseline, use
+  a new independently frozen consented photo set only after the improved model
+  and validation operating threshold are locked.
