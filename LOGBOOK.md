@@ -19,6 +19,26 @@
 
 ## Run notes
 
+### 2026-08-19 - checkpoint comparison and model selection
+
+- All checkpoints were evaluated on the identical frozen 500-image validation
+  subset (4,133 reference instances), batch size 1, max side 1,024.
+- Epoch 01: mask AP 0.1562, AP50 0.2452, AP75 0.1641, AR100 0.2702;
+  27,307 predictions; runtime 334.70 seconds.
+- Epoch 02: mask AP 0.1825, AP50 0.2861, AP75 0.1936, AR100 0.2919;
+  24,385 predictions; runtime 334.89 seconds.
+- Epoch 03: mask AP 0.2170, AP50 0.3305, AP75 0.2328, AR100 0.3425;
+  19,337 predictions; runtime 324.15 seconds.
+- Decision: select checkpoint epoch 03. It is best on every predefined summary
+  metric and emits fewer raw detections. The monotonic held-out improvement does
+  not justify extra training by itself because three epochs were the fixed
+  budget; further training would be a new experiment requiring a predefined
+  question.
+- Exact next action: keep model weights fixed and use validation data to choose
+  an operating confidence threshold for the 13 main garment categories. Render
+  representative best and worst validation examples at that fixed threshold,
+  then freeze the inference policy before testing personal phone photos.
+
 ### 2026-08-19 - corrected 500-image evaluation epoch 03 PASS
 
 - Notebook: `clothing-virtual-wardrobe-180826-1.3-evaluation`, committed run;
