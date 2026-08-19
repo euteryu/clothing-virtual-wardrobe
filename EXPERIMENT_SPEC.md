@@ -77,3 +77,6 @@ shift, rare-class recall, boundaries, or latency. Do not tune from final tests.
 - This finalization does not add training or inspect the old personal set. It
   converts two statistically unresolved checkpoints into one reproducible
   operating policy suitable for a new external applicability test.
+- Result: epoch 05 at confidence 0.6 achieved the higher main-garment validation
+  micro F1 (0.651869 versus 0.647773 for epoch 04 at 0.6) and is therefore the
+  final application checkpoint. Predicted masks remain binarized at 0.5.

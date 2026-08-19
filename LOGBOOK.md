@@ -74,21 +74,20 @@
 
 ## Current status
 
-- Phase: the single predefined improvement experiment is complete. Epoch 04 is
-  the nominal global-AP winner, but epochs 04 and 05 are practically tied; their
-  0.000112 AP difference is not evidence of user-visible superiority.
-- Final application model is pending stage 08, which will compare both epochs
-  after independently selecting their confidence thresholds on main garment
-  classes 1-13. The old epoch-03 threshold of 0.6 is not assumed transferable.
+- Phase: segmentation training and validation operating-policy selection are
+  complete. Epoch 05 is the final application model at confidence 0.6 for main
+  garment classes 1-13 and predicted-mask threshold 0.5.
+- Epoch 04 remains the nominal global COCO-mask-AP winner, but epochs 04 and 05
+  were practically tied on that metric. Stage 08 resolved the application choice
+  using main-garment validation micro F1: 0.651869 for epoch 05 versus 0.647773
+  for epoch 04.
 - Previous epoch-03 validation operating point: 544 true positives, 258 false
   positives, and 368 false negatives; micro precision 0.6783, recall 0.5965,
   and F1 0.6348 at confidence 0.6. This remains historical, not the epoch-04
   policy.
 - Applicability result: 12 of 20 images avoided a catastrophic required-garment
   miss (60%), below the initial target of 16 of 20 (80%).
-- Exact next action: run stage 08 to sweep confidence for epochs 04 and 05 on
-  the frozen validation set, lock one application policy by main-garment micro
-  F1, and then test it once on a new independently
+- Exact next action: test the locked epoch-05 policy once on a new independently
   frozen consented applicability set. Do not reuse the previously inspected 20
   images for model selection or a fresh performance claim.
 
@@ -178,6 +177,30 @@
   prototyping but its SSPL release is not a straightforward commercial license.
 
 ## Run notes
+
+### 2026-08-19 - final segmentation operating policy PASS
+
+- Stage 08 evaluated epochs 04 and 05 on the same frozen 500-image validation
+  set and optimized confidence independently for main garment classes 1-13.
+  Both checkpoints selected confidence 0.6.
+- Epoch 04 at 0.6: 560 true positives, 257 false positives, 352 false negatives;
+  precision 0.685435, recall 0.614035, and micro F1 0.647773.
+- Epoch 05 at 0.6: 558 true positives, 242 false positives, 354 false negatives;
+  precision 0.697500, recall 0.611842, and micro F1 0.651869.
+- Decision: select epoch 05 at confidence 0.6. Relative to epoch 04 it gives up
+  two true positives but removes 15 false positives, producing the better F1
+  and a cleaner application output. This operational result also confirms that
+  the tiny global-AP difference did not establish epoch 04 as the better product
+  checkpoint.
+- Final segmentation policy: epoch 05; classes 1-13; confidence 0.6; mask
+  probability threshold 0.5; maximum image side 1,024. Training and validation
+  selection are now closed.
+- Local active checkpoint:
+  `C:\Users\minse\Downloads\wardrobe_model\checkpoint_epoch_05.pt`,
+  368,543,911 bytes, SHA-256
+  `2842DEA6CC6D5D372AC5219CE70C604665EE82BBE17711C39752AB07C5490FF4`.
+  CPU load verified epoch 5 with 432 model-state tensors. The model remains
+  outside Git.
 
 ### 2026-08-19 - notebook 1.5 artifacts secured locally
 
