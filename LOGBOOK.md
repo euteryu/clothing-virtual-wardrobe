@@ -204,6 +204,27 @@
   material, a final all-20 model has no independent natural-photo test here. Use
   image-level cross-validation for internal evidence and retain frozen
   Fashionpedia validation evaluation as a catastrophic-forgetting guard.
+- Annotation-tool decision: CVAT Free/Solo is sufficient for this 20-image job.
+  One project, one task, less than 1 GB, annotation-only export, manual review,
+  and the listed 100 monthly AI calls all cover the requirement. Images are
+  already retained locally, so paid export-with-images is unnecessary. CVAT's
+  documented COCO import/export supports masks and RLE. Prefer local self-hosted
+  CVAT only if uploading private images to CVAT Online is unacceptable; Label
+  Studio Community Edition is a viable local alternative but would require
+  adapting the prepared preannotation import workflow.
+- Cross-validation rationale: the epoch-03 model achieved only 12/20 on the
+  earlier coarse catastrophic-miss assessment, demonstrating an applicability
+  problem on these mixed natural images, although epoch 05 itself has not been
+  independently tested on them. Once the 20 images become adaptation data,
+  evaluating a model on the same images it learned would mostly measure
+  memorization. Five image-level folds train on 16 and assess the remaining four,
+  rotating until each image has one out-of-fold prediction. This is limited
+  internal evidence, not a substitute for a new external test.
+- Report-artifact audit: notebook-1.5 `results.zip` is downloaded, but the full
+  stage-08 finalization output is not currently present in Downloads. Its pasted
+  final policy is recorded, but the archive containing the complete epoch-04/05
+  confidence reports and qualitative triptychs should be downloaded separately
+  as `results_stage08.zip` for the final PDF evidence package.
 
 ### 2026-08-19 - final segmentation operating policy PASS
 
