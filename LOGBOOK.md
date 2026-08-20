@@ -178,6 +178,31 @@
 
 ## Run notes
 
+### 2026-08-20 - CVAT human correction started
+
+- CVAT Free/Solo project and task were created successfully with 20 images and
+  the 13 main-garment labels. The reliable import route was to create the task
+  from `wardrobe_20_images.zip`, then upload the COCO proposal JSON separately;
+  project-level dataset import had failed with `ValueError: No media data found`.
+- Frame 0 / `photo_001.png` is complete and saved. The imported epoch-05 pants
+  proposal was reviewed/repaired, and the missed black upper garment was added
+  manually as a sweater mask. The final frame contains two instances: pants and
+  sweater. Screenshot evidence is retained privately as
+  `C:\Users\minse\Downloads\cvat3.png`.
+- Annotation convention: create filled masks for all visible garment pixels,
+  exclude genuine occluders such as hair, hands, skin, shoes, and background,
+  and do not hallucinate invisible fabric beneath occlusion. Prioritize correct
+  instance/category and materially accurate coverage over individual ambiguous
+  boundary pixels.
+- CVAT mask-brush editing was noticeably laggy while the surrounding site stayed
+  responsive, consistent with browser-side rendering and recomputation of dense
+  1,024-pixel masks. Lock completed objects, use broad tools for interiors and a
+  small brush only near boundaries, save between frames, and avoid unnecessary
+  pixel-level polishing.
+- Resume point: open the existing job, confirm frame 0 is saved, click the single
+  right-chevron beside Play to open frame 1 / `photo_002.png`, then continue the
+  same review-correct-add-save procedure through frames 1-19.
+
 ### 2026-08-19 - 20-photo domain-annotation package prepared
 
 - User-directed scope change: repurpose the already inspected 20 mixed natural
